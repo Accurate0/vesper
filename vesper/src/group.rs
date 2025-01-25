@@ -1,9 +1,13 @@
 use twilight_http::client::InteractionClient;
-use twilight_model::{id::{marker::GuildMarker, Id}, application::command::{CommandOption, CommandOptionType}};
+use twilight_model::{
+    application::command::{CommandOption, CommandOptionType},
+    id::{marker::GuildMarker, Id},
+};
 
 use crate::{
-    command::{CommandMap, Command},
-    twilight_exports::{Command as TwilightCommand, Permissions}, prelude::{CreateCommandError, Framework},
+    command::{Command, CommandMap},
+    prelude::{CreateCommandError, Framework},
+    twilight_exports::{Command as TwilightCommand, Permissions},
 };
 use std::collections::HashMap;
 
@@ -58,7 +62,7 @@ pub struct GroupParent<D, T, E> {
     /// The required permissions to execute commands inside this group
     pub required_permissions: Option<Permissions>,
     pub nsfw: bool,
-    pub only_guilds: bool
+    pub only_guilds: bool,
 }
 
 /// A group of commands, referred by discord as `SubCommandGroup`.
@@ -80,28 +84,31 @@ impl<D, T, E> GroupParent<D, T, E> {
         &self,
         framework: &Framework<D, T, E>,
         http: &InteractionClient<'_>,
-        guild: Option<Id<GuildMarker>>
-    ) -> Result<TwilightCommand, CreateCommandError>
-    {
+        guild: Option<Id<GuildMarker>>,
+    ) -> Result<TwilightCommand, CreateCommandError> {
         let options = self.get_options(framework);
 
         let model = if let Some(id) = guild {
-            let mut command = http.create_guild_command(id)
-                .chat_input(self.name, self.description)?
-                .command_options(&options)?
+            let mut command = http
+                .create_guild_command(id)
+                .chat_input(self.name, self.description)
+                .command_options(&options)
                 .nsfw(self.nsfw);
 
-            crate::if_some!(self.required_permissions, |p| command = command.default_member_permissions(p));
+            crate::if_some!(self.required_permissions, |p| command =
+                command.default_member_permissions(p));
 
             command.await?.model().await?
         } else {
-            let mut command = http.create_global_command()
-                .chat_input(self.name, self.description)?
-                .command_options(&options)?
+            let mut command = http
+                .create_global_command()
+                .chat_input(self.name, self.description)
+                .command_options(&options)
                 .nsfw(self.nsfw)
                 .dm_permission(!self.only_guilds);
 
-            crate::if_some!(self.required_permissions, |p| command = command.default_member_permissions(p));
+            crate::if_some!(self.required_permissions, |p| command =
+                command.default_member_permissions(p));
 
             command.await?.model().await?
         };

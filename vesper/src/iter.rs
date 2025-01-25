@@ -1,14 +1,17 @@
 use crate::builder::WrappedClient;
 use crate::context::SlashContext;
 use crate::parse::{Parse, ParseError};
-use crate::twilight_exports::{InteractionData, CommandDataOption, CommandOptionType, CommandOptionValue, CommandInteractionDataResolved};
+use crate::twilight_exports::{
+    CommandDataOption, CommandOptionType, CommandOptionValue, InteractionData,
+    InteractionDataResolved,
+};
 
 /// An iterator used to iterate through slash command options.
 pub struct DataIterator<'a, D> {
     src: Vec<&'a CommandDataOption>,
-    resolved: &'a mut Option<CommandInteractionDataResolved>,
+    resolved: &'a mut Option<InteractionDataResolved>,
     http: &'a WrappedClient,
-    data: &'a D
+    data: &'a D,
 }
 
 impl<'a, D> DataIterator<'a, D> {
@@ -16,14 +19,14 @@ impl<'a, D> DataIterator<'a, D> {
     pub fn new(ctx: &'a mut SlashContext<'_, D>) -> Self {
         let data = match ctx.interaction.data.as_mut().unwrap() {
             InteractionData::ApplicationCommand(data) => data,
-            _ => unreachable!()
+            _ => unreachable!(),
         };
 
         Self {
             src: Self::get_data(&data.options),
             resolved: &mut data.resolved,
             http: ctx.http_client,
-            data: ctx.data
+            data: ctx.data,
         }
     }
 }
@@ -62,7 +65,7 @@ impl<'a, D: 'a> DataIterator<'a, D> {
         }
     }
 
-    pub fn resolved(&mut self) -> Option<&mut CommandInteractionDataResolved> {
+    pub fn resolved(&mut self) -> Option<&mut InteractionDataResolved> {
         self.resolved.as_mut()
     }
 
@@ -70,28 +73,27 @@ impl<'a, D: 'a> DataIterator<'a, D> {
         if let Some(index) = options.iter().position(|item| {
             item.value.kind() == CommandOptionType::SubCommand
                 || item.value.kind() == CommandOptionType::SubCommandGroup
-        })
-        {
+        }) {
             let item = options.get(index).unwrap();
             match &item.value {
-                CommandOptionValue::SubCommandGroup(g)
-                | CommandOptionValue::SubCommand(g) => Self::get_data(g),
-                _ => unreachable!()
+                CommandOptionValue::SubCommandGroup(g) | CommandOptionValue::SubCommand(g) => {
+                    Self::get_data(g)
+                }
+                _ => unreachable!(),
             }
         } else {
-            options.iter()
-                .collect()
+            options.iter().collect()
         }
     }
 }
 
 impl<'a, D> DataIterator<'a, D>
 where
-    D: Send + Sync
+    D: Send + Sync,
 {
     pub async fn named_parse<T>(&mut self, name: &str) -> Result<T, ParseError>
     where
-        T: Parse<D>
+        T: Parse<D>,
     {
         let value = self.get(|s| s.name == name);
         if value.is_none() && <T as Parse<D>>::required() {
@@ -101,14 +103,15 @@ where
                 self.http,
                 self.data,
                 value.map(|it| &it.value),
-                self.resolved())
-                .await
-                .map_err(|mut err| {
-                    if let ParseError::Parsing { argument_name, .. } = &mut err {
-                        *argument_name = name.to_string();
-                    }
-                    err
-                })?)
+                self.resolved(),
+            )
+            .await
+            .map_err(|mut err| {
+                if let ParseError::Parsing { argument_name, .. } = &mut err {
+                    *argument_name = name.to_string();
+                }
+                err
+            })?)
         }
     }
 }

@@ -1,10 +1,9 @@
-use std::any::type_name;
+use crate::parse_impl::error;
 use crate::prelude::*;
 use crate::twilight_exports::*;
-use crate::parse_impl::error;
-use std::ops::{Deref, DerefMut};
+use std::any::type_name;
 use std::fmt::{Debug, Display, Formatter, Result as FmtResult};
-
+use std::ops::{Deref, DerefMut};
 
 mod sealed {
     use super::*;
@@ -54,15 +53,15 @@ impl<T: Number, const START: i64, const END: i64> DerefMut for Range<T, START, E
 
 #[async_trait]
 impl<T, E, const START: i64, const END: i64> Parse<T> for Range<E, START, END>
-    where
-        T: Send + Sync,
-        E: Parse<T> + Number
+where
+    T: Send + Sync,
+    E: Parse<T> + Number,
 {
     async fn parse(
         http_client: &WrappedClient,
         data: &T,
         value: Option<&CommandOptionValue>,
-        resolved: Option<&mut CommandInteractionDataResolved>
+        resolved: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         let value = E::parse(http_client, data, value, resolved).await?;
 
@@ -72,7 +71,7 @@ impl<T, E, const START: i64, const END: i64> Parse<T> for Range<E, START, END>
             return Err(error(
                 &format!("Range<{}, {}, {}>", type_name::<E>(), START, END),
                 true,
-                "Input out of range"
+                "Input out of range",
             ));
         }
 
@@ -92,6 +91,13 @@ impl<T, E, const START: i64, const END: i64> Parse<T> for Range<E, START, END>
 
 impl<T: Number, const START: i64, const END: i64> Debug for Range<T, START, END> {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
-        write!(f, "Range<{}, {}, {}>({})", type_name::<T>(), START, END, self.0)
+        write!(
+            f,
+            "Range<{}, {}, {}>({})",
+            type_name::<T>(),
+            START,
+            END,
+            self.0
+        )
     }
 }

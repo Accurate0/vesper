@@ -1,8 +1,8 @@
+use crate::prelude::*;
+use crate::twilight_exports::*;
 use twilight_model::channel::Attachment;
 use twilight_model::guild::Role;
 use twilight_model::user::User;
-use crate::prelude::*;
-use crate::twilight_exports::*;
 
 const NUMBER_MAX_VALUE: i64 = 9007199254740991;
 
@@ -11,7 +11,7 @@ pub(crate) fn error(type_name: &str, required: bool, why: &str) -> ParseError {
         argument_name: String::new(),
         required,
         argument_type: type_name.to_string(),
-        error: why.to_string()
+        error: why.to_string(),
     }
 }
 
@@ -21,7 +21,7 @@ impl<T: Send + Sync> Parse<T> for String {
         _: &WrappedClient,
         _: &T,
         value: Option<&CommandOptionValue>,
-        _: Option<&mut CommandInteractionDataResolved>
+        _: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         if let Some(CommandOptionValue::String(s)) = value {
             return Ok(s.to_owned());
@@ -40,7 +40,7 @@ impl<T: Send + Sync> Parse<T> for i64 {
         _: &WrappedClient,
         _: &T,
         value: Option<&CommandOptionValue>,
-        _: Option<&mut CommandInteractionDataResolved>
+        _: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         if let Some(CommandOptionValue::Integer(i)) = value {
             return Ok(*i);
@@ -59,11 +59,11 @@ impl<T: Send + Sync> Parse<T> for u64 {
         _: &WrappedClient,
         _: &T,
         value: Option<&CommandOptionValue>,
-        _: Option<&mut CommandInteractionDataResolved>
+        _: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         if let Some(CommandOptionValue::Integer(i)) = value {
             if *i < 0 {
-                return Err(error("u64", true, "Input out of range"))
+                return Err(error("u64", true, "Input out of range"));
             }
             return Ok(*i as u64);
         }
@@ -86,7 +86,7 @@ impl<T: Send + Sync> Parse<T> for f64 {
         _: &WrappedClient,
         _: &T,
         value: Option<&CommandOptionValue>,
-        _: Option<&mut CommandInteractionDataResolved>
+        _: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         if let Some(CommandOptionValue::Number(i)) = value {
             return Ok(*i);
@@ -111,11 +111,11 @@ impl<T: Send + Sync> Parse<T> for f32 {
         _: &WrappedClient,
         _: &T,
         value: Option<&CommandOptionValue>,
-        _: Option<&mut CommandInteractionDataResolved>
+        _: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         if let Some(CommandOptionValue::Number(i)) = value {
             if *i > f32::MAX as f64 || *i < f32::MIN as f64 {
-                return Err(error("f32", true, "Input out of range"))
+                return Err(error("f32", true, "Input out of range"));
             }
             return Ok(*i as f32);
         }
@@ -139,7 +139,7 @@ impl<T: Send + Sync> Parse<T> for bool {
         _: &WrappedClient,
         _: &T,
         value: Option<&CommandOptionValue>,
-        _: Option<&mut CommandInteractionDataResolved>
+        _: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         if let Some(CommandOptionValue::Boolean(i)) = value {
             return Ok(*i);
@@ -158,7 +158,7 @@ impl<T: Send + Sync> Parse<T> for Id<AttachmentMarker> {
         _: &WrappedClient,
         _: &T,
         value: Option<&CommandOptionValue>,
-        _: Option<&mut CommandInteractionDataResolved>
+        _: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         if let Some(CommandOptionValue::Attachment(attachment)) = value {
             return Ok(*attachment);
@@ -178,11 +178,12 @@ impl<T: Send + Sync> Parse<T> for Attachment {
         http_client: &WrappedClient,
         data: &T,
         value: Option<&CommandOptionValue>,
-        resolved: Option<&mut CommandInteractionDataResolved>
+        resolved: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         let id = <Id<AttachmentMarker> as Parse<T>>::parse(http_client, data, value, None).await?;
 
-        resolved.map(|item| item.attachments.remove(&id))
+        resolved
+            .map(|item| item.attachments.remove(&id))
             .flatten()
             .ok_or_else(|| error("Attachment", true, "Attachment expected"))
     }
@@ -198,7 +199,7 @@ impl<T: Send + Sync> Parse<T> for Id<ChannelMarker> {
         _: &WrappedClient,
         _: &T,
         value: Option<&CommandOptionValue>,
-        _: Option<&mut CommandInteractionDataResolved>
+        _: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         if let Some(CommandOptionValue::Channel(channel)) = value {
             return Ok(*channel);
@@ -218,7 +219,7 @@ impl<T: Send + Sync> Parse<T> for Id<UserMarker> {
         _: &WrappedClient,
         _: &T,
         value: Option<&CommandOptionValue>,
-        _: Option<&mut CommandInteractionDataResolved>
+        _: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         if let Some(CommandOptionValue::User(user)) = value {
             return Ok(*user);
@@ -238,11 +239,12 @@ impl<T: Send + Sync> Parse<T> for User {
         http_client: &WrappedClient,
         data: &T,
         value: Option<&CommandOptionValue>,
-        resolved: Option<&mut CommandInteractionDataResolved>
+        resolved: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         let id = <Id<UserMarker> as Parse<T>>::parse(http_client, data, value, None).await?;
 
-        resolved.map(|items| items.users.remove(&id))
+        resolved
+            .map(|items| items.users.remove(&id))
             .flatten()
             .ok_or_else(|| error("User", true, "User expected"))
     }
@@ -258,7 +260,7 @@ impl<T: Send + Sync> Parse<T> for Id<RoleMarker> {
         _: &WrappedClient,
         _: &T,
         value: Option<&CommandOptionValue>,
-        _: Option<&mut CommandInteractionDataResolved>
+        _: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         if let Some(CommandOptionValue::Role(role)) = value {
             return Ok(*role);
@@ -278,11 +280,12 @@ impl<T: Send + Sync> Parse<T> for Role {
         http_client: &WrappedClient,
         data: &T,
         value: Option<&CommandOptionValue>,
-        resolved: Option<&mut CommandInteractionDataResolved>
+        resolved: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         let id = <Id<RoleMarker> as Parse<T>>::parse(http_client, data, value, None).await?;
 
-        resolved.map(|items| items.roles.remove(&id))
+        resolved
+            .map(|items| items.roles.remove(&id))
             .flatten()
             .ok_or_else(|| error("Role", true, "Role expected"))
     }
@@ -298,7 +301,7 @@ impl<T: Send + Sync> Parse<T> for Id<GenericMarker> {
         _: &WrappedClient,
         _: &T,
         value: Option<&CommandOptionValue>,
-        _: Option<&mut CommandInteractionDataResolved>
+        _: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         if let Some(CommandOptionValue::Mentionable(id)) = value {
             return Ok(*id);
@@ -318,13 +321,13 @@ impl<T: Parse<E>, E: Send + Sync> Parse<E> for Option<T> {
         http_client: &WrappedClient,
         data: &E,
         value: Option<&CommandOptionValue>,
-        resolved: Option<&mut CommandInteractionDataResolved>
+        resolved: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         match T::parse(http_client, data, value, resolved).await {
             Ok(parsed) => Ok(Some(parsed)),
             Err(mut why) => {
                 if value.is_some() {
-                    if let ParseError::Parsing {required, ..} = &mut why {
+                    if let ParseError::Parsing { required, .. } = &mut why {
                         *required = false;
                     }
 
@@ -364,10 +367,12 @@ where
         http_client: &WrappedClient,
         data: &C,
         value: Option<&CommandOptionValue>,
-        resolved: Option<&mut CommandInteractionDataResolved>
+        resolved: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError> {
         // as we want to return the error if occurs, we'll map the error and always return Ok
-        Ok(T::parse(http_client, data, value, resolved).await.map_err(From::from))
+        Ok(T::parse(http_client, data, value, resolved)
+            .await
+            .map_err(From::from))
     }
 
     fn kind() -> CommandOptionType {
@@ -396,7 +401,7 @@ macro_rules! impl_derived_parse {
                     http_client: &WrappedClient,
                     data: &T,
                     value: Option<&CommandOptionValue>,
-                    resolved: Option<&mut CommandInteractionDataResolved>
+                    resolved: Option<&mut InteractionDataResolved>
                 ) -> Result<Self, ParseError> {
                     let p = <$prim>::parse(http_client, data, value, resolved).await?;
 

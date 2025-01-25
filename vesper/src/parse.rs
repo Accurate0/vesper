@@ -10,7 +10,7 @@ pub trait Parse<T: Send + Sync>: Sized {
         _http_client: &WrappedClient,
         _data: &T,
         _value: Option<&CommandOptionValue>,
-        _resolved: Option<&mut CommandInteractionDataResolved>
+        _resolved: Option<&mut InteractionDataResolved>,
     ) -> Result<Self, ParseError>;
 
     /// Returns the option type this argument has.
@@ -44,7 +44,7 @@ pub enum ParseError {
         /// The type of the argument.
         argument_type: String,
         /// The error message as a string.
-        error: String
+        error: String,
     },
     /// Other error occurred.
     Other(Box<dyn Error + Send + Sync>),
@@ -54,14 +54,26 @@ impl std::fmt::Display for ParseError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::StructureMismatch(why) => write!(f, "Structure mismatch: {}", why),
-            Self::Parsing { argument_name, required, argument_type, error } => {
-                write!(f, "Failed to parse {}({}required {}): {}", argument_name, {
-                    if !required {
-                        "not "
-                    } else {
-                        ""
-                    }
-                }, argument_type, error)
+            Self::Parsing {
+                argument_name,
+                required,
+                argument_type,
+                error,
+            } => {
+                write!(
+                    f,
+                    "Failed to parse {}({}required {}): {}",
+                    argument_name,
+                    {
+                        if !required {
+                            "not "
+                        } else {
+                            ""
+                        }
+                    },
+                    argument_type,
+                    error
+                )
             }
             Self::Other(why) => write!(f, "Other: {}", why),
         }

@@ -47,19 +47,28 @@ pub mod twilight_exports {
     pub use twilight_http::{
         client::{Client, InteractionClient},
         request::application::interaction::UpdateResponse,
-        response::DeserializeBodyError
+        response::DeserializeBodyError,
     };
     pub use twilight_model::{
         application::{
-            command::{Command, CommandOption, CommandOptionChoice, CommandOptionChoiceValue, CommandOptionType, CommandType},
+            command::{
+                Command, CommandOption, CommandOptionChoice, CommandOptionChoiceValue,
+                CommandOptionType, CommandType,
+            },
             interaction::{
-                application_command::{CommandData, CommandDataOption, CommandOptionValue, CommandInteractionDataResolved},
-                modal::ModalInteractionData,
+                application_command::{CommandData, CommandDataOption, CommandOptionValue},
                 message_component::MessageComponentInteractionData,
-                Interaction, InteractionData, InteractionType,
+                modal::ModalInteractionData,
+                Interaction, InteractionData, InteractionDataResolved, InteractionType,
             },
         },
-        channel::{Message, message::{Component, component::{ActionRow, TextInput, TextInputStyle}}},
+        channel::{
+            message::{
+                component::{ActionRow, TextInput, TextInputStyle},
+                Component,
+            },
+            Message,
+        },
         gateway::payload::incoming::InteractionCreate,
         guild::Permissions,
         http::interaction::{

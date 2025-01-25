@@ -1,17 +1,19 @@
+use crate::hook::{CheckHook, ErrorHandlerHook};
 use crate::localizations::{Localizations, LocalizationsProvider};
 use crate::prelude::{CreateCommandError, Framework};
+use crate::twilight_exports::{Command as TwilightCommand, CommandType};
 use crate::{
-    argument::CommandArgument, context::SlashContext, twilight_exports::Permissions, BoxFuture, framework::ProcessResult,
+    argument::CommandArgument, context::SlashContext, framework::ProcessResult,
+    twilight_exports::Permissions, BoxFuture,
 };
 use std::collections::HashMap;
 use tracing::{debug, info};
 use twilight_http::client::InteractionClient;
 use twilight_model::id::{marker::GuildMarker, Id};
-use crate::hook::{CheckHook, ErrorHandlerHook};
-use crate::twilight_exports::{Command as TwilightCommand, CommandType};
 
 /// A pointer to a command function.
-pub(crate) type CommandFn<D, T, E> = for<'cx, 'data> fn(&'cx mut SlashContext<'data, D>) -> BoxFuture<'cx, Result<T, E>>;
+pub(crate) type CommandFn<D, T, E> =
+    for<'cx, 'data> fn(&'cx mut SlashContext<'data, D>) -> BoxFuture<'cx, Result<T, E>>;
 /// A map of [commands](self::Command).
 pub type CommandMap<D, T, E> = HashMap<&'static str, Command<D, T, E>>;
 
@@ -35,10 +37,10 @@ pub enum ExecutionState {
     CheckFailed,
     /// The command finished executing without errors.
     CommandFinished,
-    /// The error handler raised an error. 
+    /// The error handler raised an error.
     CommandErrored,
     /// The `before` hook returned `false` and the command didn't execute.
-    BeforeHookFailed
+    BeforeHookFailed,
 }
 
 /// The location of the output of the command.
@@ -51,7 +53,7 @@ pub enum OutputLocation<T, E> {
     /// The output has been forwarded to the `after` hook.
     TakenByAfterHook,
     /// The output has been taken by the `error_handler` hook.
-    TakenByErrorHandler
+    TakenByErrorHandler,
 }
 
 /// Information about the command execution and it's output.
@@ -59,7 +61,7 @@ pub struct ExecutionResult<T, E> {
     /// The execution state of the command.
     pub state: ExecutionState,
     /// The output of the command.
-    pub output: OutputLocation<T, E>
+    pub output: OutputLocation<T, E>,
 }
 
 impl<T, E> From<ExecutionResult<T, E>> for ProcessResult<T, E> {
@@ -86,7 +88,7 @@ pub struct Command<D, T, E> {
     pub nsfw: bool,
     pub only_guilds: bool,
     pub checks: Vec<CheckHook<D, E>>,
-    pub error_handler: Option<ErrorHandlerHook<D, E>>
+    pub error_handler: Option<ErrorHandlerHook<D, E>>,
 }
 
 impl<D, T, E> Command<D, T, E> {
@@ -104,7 +106,7 @@ impl<D, T, E> Command<D, T, E> {
             nsfw: false,
             only_guilds: false,
             checks: Default::default(),
-            error_handler: None
+            error_handler: None,
         }
     }
 
@@ -156,14 +158,17 @@ impl<D, T, E> Command<D, T, E> {
         self
     }
 
-    pub fn localized_names<I, K, V>(mut self, iterator: I) -> Self 
+    pub fn localized_names<I, K, V>(mut self, iterator: I) -> Self
     where
         I: IntoIterator<Item = (K, V)>,
         K: ToString,
-        V: ToString
+        V: ToString,
     {
-        self.localized_names
-            .extend(iterator.into_iter().map(|(k, v)| (k.to_string(), v.to_string())));
+        self.localized_names.extend(
+            iterator
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
         self
     }
 
@@ -172,14 +177,17 @@ impl<D, T, E> Command<D, T, E> {
         self
     }
 
-    pub fn localized_descriptions<I, K, V>(mut self, iterator: I) -> Self 
+    pub fn localized_descriptions<I, K, V>(mut self, iterator: I) -> Self
     where
         I: IntoIterator<Item = (K, V)>,
         K: ToString,
-        V: ToString
+        V: ToString,
     {
-        self.localized_descriptions
-            .extend(iterator.into_iter().map(|(k, v)| (k.to_string(), v.to_string())));
+        self.localized_descriptions.extend(
+            iterator
+                .into_iter()
+                .map(|(k, v)| (k.to_string(), v.to_string())),
+        );
         self
     }
 
@@ -188,7 +196,10 @@ impl<D, T, E> Command<D, T, E> {
         self
     }
 
-    pub async fn run_checks<'cx, 'data: 'cx>(&self, context: &'cx mut SlashContext<'data, D>) -> Result<bool, E> {
+    pub async fn run_checks<'cx, 'data: 'cx>(
+        &self,
+        context: &'cx mut SlashContext<'data, D>,
+    ) -> Result<bool, E> {
         debug!("Running command [{}] checks", self.name);
         for check in &self.checks {
             if !(check.0)(context).await? {
@@ -204,37 +215,48 @@ impl<D, T, E> Command<D, T, E> {
         &self,
         framework: &Framework<D, T, E>,
         http: &InteractionClient<'_>,
-        guild: Option<Id<GuildMarker>>
-    ) -> Result<TwilightCommand, CreateCommandError>
-    {
-        let options = self.arguments.iter()
+        guild: Option<Id<GuildMarker>>,
+    ) -> Result<TwilightCommand, CreateCommandError> {
+        let options = self
+            .arguments
+            .iter()
             .map(|a| a.as_option(framework, self))
             .collect::<Vec<_>>();
 
         let name_localizations = self.localized_names.get_localizations(framework, &self);
-        let description_localizations = self.localized_descriptions.get_localizations(framework, &self);
+        let description_localizations = self
+            .localized_descriptions
+            .get_localizations(framework, &self);
 
         let model = if let Some(id) = guild {
-            let mut command = http.create_guild_command(id)
-                .chat_input(self.name, self.description)?
-                .command_options(&options)?
+            let mut command = http
+                .create_guild_command(id)
+                .chat_input(self.name, self.description)
+                .command_options(&options)
                 .nsfw(self.nsfw);
 
-            if_some!(self.required_permissions, |p| command = command.default_member_permissions(p));
-            if_some!(&name_localizations, |n| command = command.name_localizations(n)?);
-            if_some!(&description_localizations, |d| command = command.description_localizations(d)?);
+            if_some!(self.required_permissions, |p| command =
+                command.default_member_permissions(p));
+            if_some!(&name_localizations, |n| command =
+                command.name_localizations(n));
+            if_some!(&description_localizations, |d| command =
+                command.description_localizations(d));
 
             command.await?.model().await?
         } else {
-            let mut command = http.create_global_command()
-                .chat_input(self.name, self.description)?
-                .command_options(&options)?
+            let mut command = http
+                .create_global_command()
+                .chat_input(self.name, self.description)
+                .command_options(&options)
                 .nsfw(self.nsfw)
                 .dm_permission(!self.only_guilds);
 
-            if_some!(self.required_permissions, |p| command = command.default_member_permissions(p));
-            if_some!(&name_localizations, |n| command = command.name_localizations(n)?);
-            if_some!(&description_localizations, |d| command = command.description_localizations(d)?);
+            if_some!(self.required_permissions, |p| command =
+                command.default_member_permissions(p));
+            if_some!(&name_localizations, |n| command =
+                command.name_localizations(n));
+            if_some!(&description_localizations, |d| command =
+                command.description_localizations(d));
 
             command.await?.model().await?
         };
@@ -245,24 +267,27 @@ impl<D, T, E> Command<D, T, E> {
     async fn create_user_command(
         &self,
         http: &InteractionClient<'_>,
-        guild: Option<Id<GuildMarker>>
-    ) -> Result<TwilightCommand, CreateCommandError>
-    {
+        guild: Option<Id<GuildMarker>>,
+    ) -> Result<TwilightCommand, CreateCommandError> {
         let model = if let Some(id) = guild {
-            let mut command = http.create_guild_command(id)
-                .user(self.name)?
+            let mut command = http
+                .create_guild_command(id)
+                .user(self.name)
                 .nsfw(self.nsfw);
 
-            if_some!(self.required_permissions, |p| command = command.default_member_permissions(p));
+            if_some!(self.required_permissions, |p| command =
+                command.default_member_permissions(p));
 
             command.await?.model().await?
         } else {
-            let mut command = http.create_global_command()
-                .user(self.name)?
+            let mut command = http
+                .create_global_command()
+                .user(self.name)
                 .nsfw(self.nsfw)
                 .dm_permission(!self.only_guilds);
 
-            if_some!(self.required_permissions, |p| command = command.default_member_permissions(p));
+            if_some!(self.required_permissions, |p| command =
+                command.default_member_permissions(p));
 
             command.await?.model().await?
         };
@@ -273,24 +298,27 @@ impl<D, T, E> Command<D, T, E> {
     async fn create_message_command(
         &self,
         http: &InteractionClient<'_>,
-        guild: Option<Id<GuildMarker>>
-    ) -> Result<TwilightCommand, CreateCommandError>
-    {
+        guild: Option<Id<GuildMarker>>,
+    ) -> Result<TwilightCommand, CreateCommandError> {
         let model = if let Some(id) = guild {
-            let mut command = http.create_guild_command(id)
-                .message(self.name)?
+            let mut command = http
+                .create_guild_command(id)
+                .message(self.name)
                 .nsfw(self.nsfw);
 
-            if_some!(self.required_permissions, |p| command = command.default_member_permissions(p));
+            if_some!(self.required_permissions, |p| command =
+                command.default_member_permissions(p));
 
             command.await?.model().await?
         } else {
-            let mut command = http.create_global_command()
-                .message(self.name)?
+            let mut command = http
+                .create_global_command()
+                .message(self.name)
                 .nsfw(self.nsfw)
                 .dm_permission(!self.only_guilds);
 
-            if_some!(self.required_permissions, |p| command = command.default_member_permissions(p));
+            if_some!(self.required_permissions, |p| command =
+                command.default_member_permissions(p));
 
             command.await?.model().await?
         };
@@ -301,19 +329,21 @@ impl<D, T, E> Command<D, T, E> {
     pub async fn create(
         &self,
         framework: &Framework<D, T, E>,
-        http: &InteractionClient<'_>, 
-        guild: Option<Id<GuildMarker>>
-    ) -> Result<TwilightCommand, CreateCommandError>
-    {
+        http: &InteractionClient<'_>,
+        guild: Option<Id<GuildMarker>>,
+    ) -> Result<TwilightCommand, CreateCommandError> {
         match self.kind {
             CommandType::ChatInput => self.create_chat_command(framework, http, guild).await,
             CommandType::Message => self.create_message_command(http, guild).await,
             CommandType::User => self.create_user_command(http, guild).await,
-            _ => panic!("Invalid command type")
+            _ => panic!("Invalid command type"),
         }
     }
 
-    pub async fn execute<'cx, 'data: 'cx>(&self, context: &'cx mut SlashContext<'data, D>) -> ExecutionResult<T, E> {
+    pub async fn execute<'cx, 'data: 'cx>(
+        &self,
+        context: &'cx mut SlashContext<'data, D>,
+    ) -> ExecutionResult<T, E> {
         let state;
         let location;
 
@@ -324,36 +354,48 @@ impl<D, T, E> Command<D, T, E> {
 
                 match (&self.error_handler, output) {
                     (Some(hook), Err(why)) => {
-                        info!("Command [{}] raised an error, using established error handler", self.name);
+                        info!(
+                            "Command [{}] raised an error, using established error handler",
+                            self.name
+                        );
                         state = ExecutionState::CommandErrored;
                         location = OutputLocation::TakenByErrorHandler;
 
                         (hook.0)(context, why).await;
-                    },
+                    }
                     (_, Ok(res)) => {
                         debug!("Command [{}] executed successfully", self.name);
                         state = ExecutionState::CommandFinished;
                         location = OutputLocation::Present(Ok(res));
-                    },
+                    }
                     (_, Err(res)) => {
-                        info!("Command [{}] raised an error, but no error handler was established", self.name);
+                        info!(
+                            "Command [{}] raised an error, but no error handler was established",
+                            self.name
+                        );
                         state = ExecutionState::CommandErrored;
                         location = OutputLocation::Present(Err(res));
                     }
                 };
-            },
+            }
             Err(why) => {
                 state = ExecutionState::CheckErrored;
                 // If the command has an error handler, execute it, if not, discard the error.
                 if let Some(hook) = &self.error_handler {
-                    info!("Command [{}] check raised an error, using established error handler", self.name);
+                    info!(
+                        "Command [{}] check raised an error, using established error handler",
+                        self.name
+                    );
                     (hook.0)(context, why).await;
                     location = OutputLocation::TakenByErrorHandler;
                 } else {
-                    info!("Command [{}] check raised an error, but no error handler was established", self.name);
+                    info!(
+                        "Command [{}] check raised an error, but no error handler was established",
+                        self.name
+                    );
                     location = OutputLocation::Present(Err(why));
                 }
-            },
+            }
             _ => {
                 state = ExecutionState::CheckFailed;
                 location = OutputLocation::NotExecuted;
@@ -362,7 +404,7 @@ impl<D, T, E> Command<D, T, E> {
 
         ExecutionResult {
             state,
-            output: location
+            output: location,
         }
     }
 }
